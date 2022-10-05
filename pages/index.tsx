@@ -15,10 +15,10 @@ interface IHeadCell {
   label: string;
 }
 
-export async function getServerSideProps() {
+export async function getStaticProps() {
   const { data } = await client.query({
     query: gql`
-      query GetLaunches($limit: Int = 20) {
+      query GetLaunches($limit: Int = 100) {
         launches(limit: $limit) {
           mission_name
           rocket {

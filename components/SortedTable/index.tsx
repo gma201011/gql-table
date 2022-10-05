@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -23,6 +23,7 @@ interface ITableProps {
 const SortedTable = ({ rows, headCells }: ITableProps) => {
   const [order, setOrder] = useState<'asc' | 'desc'>('asc');
   const [orderBy, setOrderBy] = useState('mission_name');
+  const [tableContent, setTableContent] = useState<JSX.Element | null>(null);
 
   function handleDescendingComparing<T>(a: T, b: T, orderBy: keyof T) {
     if (b[orderBy] < a[orderBy]) {
@@ -32,15 +33,6 @@ const SortedTable = ({ rows, headCells }: ITableProps) => {
       return 1;
     }
     return 0;
-  }
-
-  function getComparator<Key extends keyof any>(
-    order: 'asc' | 'desc',
-    orderBy: Key
-  ): (a: { [key in Key]: string }, b: { [key in Key]: string }) => number {
-    return order === 'desc'
-      ? (a, b) => handleDescendingComparing(a, b, orderBy)
-      : (a, b) => -handleDescendingComparing(a, b, orderBy);
   }
 
   function handleStableSorting<T>(
@@ -59,49 +51,65 @@ const SortedTable = ({ rows, headCells }: ITableProps) => {
     return stabilizedThis?.map((el) => el[0]);
   }
 
-  function handleRequestSort(
-    event: React.MouseEvent<unknown>,
-    property: string
-  ) {
-    const isAsc = orderBy === property && order === 'asc';
-    setOrder(isAsc ? 'desc' : 'asc');
-    setOrderBy(property);
-  }
+  useEffect(() => {
+    function getComparator<Key extends keyof any>(
+      order: 'asc' | 'desc',
+      orderBy: Key
+    ): (a: { [key in Key]: string }, b: { [key in Key]: string }) => number {
+      return order === 'desc'
+        ? (a, b) => handleDescendingComparing(a, b, orderBy)
+        : (a, b) => -handleDescendingComparing(a, b, orderBy);
+    }
 
-  function renderBodyCell(data: { [propName: string]: string }) {
-    const fieldArr = Array();
-    headCells.map((cell) => fieldArr.push(cell.id));
-    return fieldArr.map((id: string) => {
-      const item = id;
+    function handleRequestSort(
+      event: React.MouseEvent<unknown>,
+      property: string
+    ) {
+      const isAsc = orderBy === property && order === 'asc';
+      setOrder(isAsc ? 'desc' : 'asc');
+      setOrderBy(property);
+    }
 
-      return <TableCell key={id}>{data[item]}</TableCell>;
-    });
-  }
+    function renderBodyCell(data: { [propName: string]: string }) {
+      const fieldArr = Array();
+      headCells.map((cell) => fieldArr.push(cell.id));
+      return fieldArr.map((id: string) => {
+        const item = id;
+
+        return <TableCell key={id}>{data[item]}</TableCell>;
+      });
+    }
+    function renderTableContent() {
+      return (
+        <Table className={styles.table}>
+          <EnhancedTableHead
+            order={order}
+            orderBy={orderBy}
+            onRequestSort={handleRequestSort}
+            headCells={headCells}
+          />
+          <TableBody>
+            {handleStableSorting(rows, getComparator(order, orderBy))?.map(
+              (row) => {
+                return (
+                  <TableRow hover key={row.id}>
+                    {renderBodyCell(row)}
+                  </TableRow>
+                );
+              }
+            )}
+          </TableBody>
+        </Table>
+      );
+    }
+    const tableContent = renderTableContent();
+    setTableContent(tableContent);
+  }, [headCells, order, orderBy, rows]);
 
   return (
     <div className={styles.root}>
       <Paper className={styles.paper}>
-        <TableContainer>
-          <Table className={styles.table}>
-            <EnhancedTableHead
-              order={order}
-              orderBy={orderBy}
-              onRequestSort={handleRequestSort}
-              headCells={headCells}
-            />
-            <TableBody>
-              {handleStableSorting(rows, getComparator(order, orderBy))?.map(
-                (row) => {
-                  return (
-                    <TableRow hover key={row.id}>
-                      {renderBodyCell(row)}
-                    </TableRow>
-                  );
-                }
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <TableContainer>{tableContent}</TableContainer>
       </Paper>
     </div>
   );
