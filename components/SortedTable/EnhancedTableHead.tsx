@@ -1,9 +1,4 @@
-import {
-  TableHead,
-  TableRow,
-  TableCell,
-  TableSortLabel,
-} from '@material-ui/core';
+import { TableHead, TableRow, TableCell, TableSortLabel } from '@mui/material';
 import styles from './index.module.scss';
 
 interface EnhancedTableProps {

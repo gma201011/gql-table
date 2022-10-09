@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Table,
   TableBody,
@@ -6,24 +6,24 @@ import {
   TableContainer,
   TableRow,
   Paper,
-} from '@material-ui/core';
+} from '@mui/material';
 import EnhancedTableHead from './EnhancedTableHead';
 import styles from './index.module.scss';
 
-interface IRows {
+interface ITableData {
   id: string;
-  [propName: string]: string;
+  [propName: string]: any;
 }
 
 interface ITableProps {
-  rows: IRows[];
+  tableData: ITableData[] | [];
   headCells: any[];
+  loading?: boolean;
 }
 
-const SortedTable = ({ rows, headCells }: ITableProps) => {
+const SortedTable = ({ tableData, headCells, loading }: ITableProps) => {
   const [order, setOrder] = useState<'asc' | 'desc'>('asc');
   const [orderBy, setOrderBy] = useState('mission_name');
-  const [tableContent, setTableContent] = useState<JSX.Element | null>(null);
 
   function handleDescendingComparing<T>(a: T, b: T, orderBy: keyof T) {
     if (b[orderBy] < a[orderBy]) {
@@ -33,6 +33,15 @@ const SortedTable = ({ rows, headCells }: ITableProps) => {
       return 1;
     }
     return 0;
+  }
+
+  function getComparator<Key extends keyof any>(
+    order: 'asc' | 'desc',
+    orderBy: Key
+  ): (a: { [key in Key]: string }, b: { [key in Key]: string }) => number {
+    return order === 'desc'
+      ? (a, b) => handleDescendingComparing(a, b, orderBy)
+      : (a, b) => -handleDescendingComparing(a, b, orderBy);
   }
 
   function handleStableSorting<T>(
@@ -51,68 +60,62 @@ const SortedTable = ({ rows, headCells }: ITableProps) => {
     return stabilizedThis?.map((el) => el[0]);
   }
 
-  useEffect(() => {
-    function getComparator<Key extends keyof any>(
-      order: 'asc' | 'desc',
-      orderBy: Key
-    ): (a: { [key in Key]: string }, b: { [key in Key]: string }) => number {
-      return order === 'desc'
-        ? (a, b) => handleDescendingComparing(a, b, orderBy)
-        : (a, b) => -handleDescendingComparing(a, b, orderBy);
-    }
+  function handleRequestSort(
+    event: React.MouseEvent<unknown>,
+    property: string
+  ) {
+    const isAsc = orderBy === property && order === 'asc';
+    setOrder(isAsc ? 'desc' : 'asc');
+    setOrderBy(property);
+  }
 
-    function handleRequestSort(
-      event: React.MouseEvent<unknown>,
-      property: string
-    ) {
-      const isAsc = orderBy === property && order === 'asc';
-      setOrder(isAsc ? 'desc' : 'asc');
-      setOrderBy(property);
-    }
-
-    function renderBodyCell(data: { [propName: string]: string }) {
-      const fieldArr = Array();
-      headCells.map((cell) => fieldArr.push(cell.id));
-      return fieldArr.map((id: string) => {
-        const item = id;
-
-        return <TableCell key={id}>{data[item]}</TableCell>;
-      });
-    }
-    function renderTableContent() {
-      return (
-        <Table className={styles.table}>
-          <EnhancedTableHead
-            order={order}
-            orderBy={orderBy}
-            onRequestSort={handleRequestSort}
-            headCells={headCells}
-          />
-          <TableBody>
-            {handleStableSorting(rows, getComparator(order, orderBy))?.map(
-              (row) => {
-                return (
-                  <TableRow hover key={row.id}>
-                    {renderBodyCell(row)}
-                  </TableRow>
-                );
-              }
-            )}
-          </TableBody>
-        </Table>
-      );
-    }
-    const tableContent = renderTableContent();
-    setTableContent(tableContent);
-  }, [headCells, order, orderBy, rows]);
+  function renderBodyCell(data: { [propName: string]: string }) {
+    const fieldArr = Array();
+    headCells.map((cell) => fieldArr.push(cell.id));
+    return fieldArr.map((id: string) => {
+      const item = id;
+      return <TableCell key={id}>{data[item]}</TableCell>;
+    });
+  }
 
   return (
     <div className={styles.root}>
       <Paper className={styles.paper}>
-        <TableContainer>{tableContent}</TableContainer>
+        <TableContainer>
+          <Table className={styles.table}>
+            <EnhancedTableHead
+              order={order}
+              orderBy={orderBy}
+              onRequestSort={handleRequestSort}
+              headCells={headCells}
+            />
+            <TableBody>
+              {!tableData?.length ? (
+                <TableRow>
+                  <TableCell>No Data</TableCell>
+                </TableRow>
+              ) : (
+                <>
+                  {handleStableSorting(
+                    tableData,
+                    getComparator(order, orderBy)
+                  )?.map((row, index) => {
+                    return (
+                      <TableRow hover key={index}>
+                        {renderBodyCell(row)}
+                      </TableRow>
+                    );
+                  })}
+                </>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
       </Paper>
     </div>
   );
 };
 
-export default SortedTable;
+export default React.memo(SortedTable, (prevProps, nextProps) => {
+  return prevProps.loading === nextProps.loading;
+});

@@ -1,0 +1,29 @@
+.wrapper {
+  width: 90%;
+  margin: 0 auto;
+}
+
+.textSearchField {
+  width: 40%;
+}
+
+.searchArea {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+
+.dateSearchingArea {
+  display: flex;
+  align-items: center;
+  button {
+    margin-left: 5px;
+  }
+}
+
+.circularProgress {
+  position: relative;
+  margin-left: 50%;
+  margin-top: 10%;
+  left: -20px;
+}
