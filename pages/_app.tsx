@@ -1,7 +1,6 @@
 import '../styles/globals.css';
 import type { AppProps } from 'next/app';
 import { ApolloProvider } from '@apollo/client';
-import DateFnsUtils from '@date-io/date-fns';
 import client from '../apollo-client';
 
 function MyApp({ Component, pageProps }: AppProps) {

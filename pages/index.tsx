@@ -1,46 +1,19 @@
 import React, { useState, useRef } from 'react';
 import { useLazyQuery } from '@apollo/client';
-import SortedTable from '../components/SortedTable';
 import client from '../apollo-client';
 import { format } from 'date-fns';
-import {
-  TextField,
-  CircularProgress,
-  InputAdornment,
-  Button,
-} from '@mui/material';
-import SearchIcon from '@mui/icons-material/Search';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import {
   GET_ALL_LAUNCHES_QUERY,
   FIND_LAUNCHES_BY_TEXT_QUERY,
   FIND_LAUNCHES_BY_DATE_QUERY,
 } from '../graphql/Queries';
-import styles from './index.module.scss';
-import debounce from 'lodash/debounce';
+import { CircularProgress } from '@mui/material';
 import TableTabs from '../components/TableTabs';
-
-interface ILaunchData {
-  mission_name: string;
-  rocket: { rocket_name: string; rocket_type: string };
-  launch_date_local: string;
-  id: string;
-}
-
-interface ITableData {
-  mission_name: string;
-  rocket_name: string;
-  rocket_type: string;
-  launch_date_local: string;
-  id: string;
-}
-
-interface IHeadCell {
-  id: string;
-  label: string;
-}
+import TextSearcher from './TextSearcher';
+import DateSearcher from './DateSearcher';
+import SortedTable from '../components/SortedTable';
+import styles from './index.module.scss';
+import { ILaunchData, ITableData, IHeadCell } from './interfaces';
 
 export async function getStaticProps() {
   const { data } = await client.query({
@@ -57,8 +30,8 @@ export async function getStaticProps() {
 const Home = ({ launchData }: { launchData: ILaunchData[] }) => {
   const [searchData, setSearchData] = useState<ITableData[] | []>([]);
   const [dateValue, setDateValue] = useState<string | null | undefined>(null);
-  const [dataSearching, setDataSearching] = useState<boolean>(false);
   const [tabValue, setTabValue] = useState(0);
+  const [dataSearching, setDataSearching] = useState<boolean>(false);
 
   const inputRef = useRef<HTMLInputElement>();
 
@@ -73,7 +46,6 @@ const Home = ({ launchData }: { launchData: ILaunchData[] }) => {
 
   const [getTextSearchResult] = useLazyQuery(FIND_LAUNCHES_BY_TEXT_QUERY, {
     fetchPolicy: 'no-cache',
-
     onCompleted: (result) => {
       setDateValue(null);
       const searchResult = createTableData([
@@ -137,7 +109,7 @@ const Home = ({ launchData }: { launchData: ILaunchData[] }) => {
     },
   ];
 
-  function createTableRow(
+  function handleFormattingTableData(
     mission_name: string,
     rocket_name: string,
     rocket_type: string,
@@ -149,18 +121,17 @@ const Home = ({ launchData }: { launchData: ILaunchData[] }) => {
 
   function createTableData(data: ILaunchData[]) {
     return data?.map((item: ILaunchData) =>
-      createTableRow(
+      handleFormattingTableData(
         item?.mission_name,
         item?.rocket?.rocket_name,
         item?.rocket?.rocket_type,
-        item?.launch_date_local &&
-          format(new Date(item?.launch_date_local), 'yyyy/MM/dd'),
+        format(new Date(item?.launch_date_local), 'yyyy/MM/dd'),
         item?.id
       )
     );
   }
 
-  function handleInputValueOnChange() {
+  function handleTextSearcherOnChange() {
     if (!inputRef.current?.value) return;
     setDataSearching(true);
     getTextSearchResult({
@@ -172,15 +143,15 @@ const Home = ({ launchData }: { launchData: ILaunchData[] }) => {
     });
   }
 
-  function handleDatePickerOnChange(newValue: string | null | undefined) {
+  function handleDateSearcherOnChange(newValue: string | null | undefined) {
     setDateValue(newValue);
   }
 
   function handleMonthSearchingButtonOnClick() {
+    if (!dateValue) return;
     setDataSearching(true);
-    if (!dateValue || dateValue === null) return setDataSearching(false);
     if (inputRef.current) inputRef.current.value = '';
-    const formattedDate = format(new Date(dateValue), 'yyyy-MM').toString();
+    const formattedDate = format(new Date(dateValue), 'yyyy-MM');
 
     getMonthSearchResult({
       variables: {
@@ -192,54 +163,29 @@ const Home = ({ launchData }: { launchData: ILaunchData[] }) => {
   return (
     <div className={styles.wrapper}>
       <div className={styles.searchArea}>
-        <TextField
-          placeholder='Search mission name, rocket name or rocket type'
+        <TextSearcher
           inputRef={inputRef}
-          onChange={debounce(handleInputValueOnChange, 1000)}
-          className={styles.textSearchField}
-          variant='standard'
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position='start'>
-                <SearchIcon />
-              </InputAdornment>
-            ),
-          }}
+          handleInputValueOnChange={handleTextSearcherOnChange}
         />
-        <div>
-          <LocalizationProvider dateAdapter={AdapterDateFns}>
-            <DatePicker
-              inputFormat='yyyy/MM'
-              views={['year', 'month']}
-              value={dateValue}
-              onChange={handleDatePickerOnChange}
-              InputAdornmentProps={{ position: 'start' }}
-              renderInput={(params) => (
-                <div className={styles.dateSearchingArea}>
-                  <TextField variant='standard' {...params} />
-                  <Button
-                    onClick={handleMonthSearchingButtonOnClick}
-                    variant='outlined'
-                    disabled={params.error || dataSearching}
-                  >
-                    Search by Month
-                  </Button>
-                </div>
-              )}
-            />
-          </LocalizationProvider>
-        </div>
+        <DateSearcher
+          dateValue={dateValue}
+          dataSearching={dataSearching}
+          handleDatePickerOnChange={handleDateSearcherOnChange}
+          handleMonthSearchingButtonOnClick={handleMonthSearchingButtonOnClick}
+        />
       </div>
       {dataSearching ? (
         <div className={styles.circularProgress}>
           <CircularProgress />
         </div>
       ) : (
-        <TableTabs
-          value={tabValue}
-          setValue={setTabValue}
-          tableData={tabData}
-        />
+        !dataSearching && (
+          <TableTabs
+            value={tabValue}
+            setValue={setTabValue}
+            tableData={tabData}
+          />
+        )
       )}
     </div>
   );

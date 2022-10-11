@@ -6,6 +6,8 @@ import {
   TableContainer,
   TableRow,
   Paper,
+  Pagination,
+  Stack,
 } from '@mui/material';
 import EnhancedTableHead from './EnhancedTableHead';
 import styles from './index.module.scss';
@@ -18,12 +20,13 @@ interface ITableData {
 interface ITableProps {
   tableData: ITableData[] | [];
   headCells: any[];
-  loading?: boolean;
+  loading: boolean;
 }
 
-const SortedTable = ({ tableData, headCells, loading }: ITableProps) => {
+const SortedTable = ({ tableData, headCells }: ITableProps) => {
   const [order, setOrder] = useState<'asc' | 'desc'>('asc');
   const [orderBy, setOrderBy] = useState('mission_name');
+  const [page, setPage] = useState(1);
 
   function handleDescendingComparing<T>(a: T, b: T, orderBy: keyof T) {
     if (b[orderBy] < a[orderBy]) {
@@ -78,8 +81,12 @@ const SortedTable = ({ tableData, headCells, loading }: ITableProps) => {
     });
   }
 
+  function handleChangePage(event: React.ChangeEvent<unknown>, value: number) {
+    setPage(value);
+  }
+
   return (
-    <div className={styles.root}>
+    <>
       <Paper className={styles.paper}>
         <TableContainer>
           <Table className={styles.table}>
@@ -96,23 +103,34 @@ const SortedTable = ({ tableData, headCells, loading }: ITableProps) => {
                 </TableRow>
               ) : (
                 <>
-                  {handleStableSorting(
-                    tableData,
-                    getComparator(order, orderBy)
-                  )?.map((row, index) => {
-                    return (
-                      <TableRow hover key={index}>
-                        {renderBodyCell(row)}
-                      </TableRow>
-                    );
-                  })}
+                  {handleStableSorting(tableData, getComparator(order, orderBy))
+                    ?.slice((page - 1) * 20, page * 20)
+                    .map((row, index) => {
+                      return (
+                        <TableRow hover key={index}>
+                          {renderBodyCell(row)}
+                        </TableRow>
+                      );
+                    })}
                 </>
               )}
             </TableBody>
           </Table>
         </TableContainer>
       </Paper>
-    </div>
+      <Stack spacing={20} alignItems='center' className={styles.pagination}>
+        <Pagination
+          count={Math.floor(tableData.length / 20) + 1}
+          color='primary'
+          size='large'
+          page={page}
+          onChange={handleChangePage}
+          className={styles.a}
+          showFirstButton
+          showLastButton
+        />
+      </Stack>
+    </>
   );
 };
 
